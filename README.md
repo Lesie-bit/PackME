@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # PackME
 
 หา หรือสร้าง server pack ให้ modpack จาก CurseForge โดยอัตโนมัติ
@@ -47,3 +48,6 @@ npm start
 
 - สถานะ job เก็บใน memory เฉยๆ — restart server แล้วข้อมูลหาย (พอ deploy จริงจัง ค่อยย้ายไป database)
 - ยังไม่ได้ต่อ ServerPackCreator จริงสำหรับสร้าง server pack เมื่อไม่มีไฟล์สำเร็จรูป (ตอนนี้ปลอม resultUrl ไว้)
+=======
+# PackME
+>>>>>>> 64e65ee4e3db987f4564c5199a65c5f0d9163d14

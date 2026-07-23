@@ -1,0 +1,13 @@
+{
+  "name": "packme",
+  "version": "0.1.0",
+  "description": "หา หรือสร้าง server pack ให้ modpack จาก CurseForge",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "dotenv": "^16.4.5"
+  }
+}

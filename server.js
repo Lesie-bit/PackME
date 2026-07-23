@@ -33,12 +33,11 @@ app.get("/api/modpacks/:id/server-pack", async (req, res) => {
       return res.json({ type: "official", downloadUrl: info.downloadUrl });
     }
 
-    const jobId = String(jobCounter++);
-    createJob(jobId, modpackId);
+const jobId = String(jobCounter++);
+    await createJob(jobId, modpackId);
 
-    // จำลองว่างานใช้เวลา 5 วินาที (ของจริงตรงนี้จะเป็นการเรียก ServerPackCreator)
-    setTimeout(() => {
-      updateJob(jobId, "done", `https://example.com/generated/${modpackId}.zip`);
+    setTimeout(async () => {
+      await updateJob(jobId, "done", `https://example.com/generated/${modpackId}.zip`);
     }, 5000);
 
     return res.json({ type: "generating", jobId });
@@ -49,8 +48,8 @@ app.get("/api/modpacks/:id/server-pack", async (req, res) => {
 });
 
 // endpoint ให้ frontend เรียกวนซ้ำ (polling) เพื่อเช็คว่า job เสร็จหรือยัง
-app.get("/api/jobs/:jobId", (req, res) => {
-  const job = getJob(req.params.jobId);
+app.get("/api/jobs/:jobId", async (req, res) => {
+  const job = await getJob(req.params.jobId);
   if (!job) return res.status(404).json({ error: "ไม่พบ job นี้" });
   res.json({ status: job.status, resultUrl: job.result_url });
 });

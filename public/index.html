@@ -4,21 +4,36 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PackME</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main>
-    <h1>PackME</h1>
-    <p class="subtitle">หา หรือสร้าง server pack ให้ modpack จาก CurseForge</p>
+  <button id="langToggle" class="lang-toggle">EN</button>
 
-    <div class="check-box">
-      <input id="modpackInput" placeholder="ใส่ modpack ID เช่น 123456" />
-      <button id="checkBtn">เช็ค</button>
+  <main>
+    <div class="brand">
+      <div class="brand-mark">PM</div>
+      <h1 data-i18n="title">PackME</h1>
+    </div>
+    <p class="subtitle" data-i18n="tagline">หา หรือสร้าง server pack ให้ modpack จาก CurseForge</p>
+
+    <div class="search-wrap">
+      <input
+        id="modpackInput"
+        data-i18n-placeholder="searchPlaceholder"
+        placeholder="พิมพ์ชื่อ modpack เช่น RLCraft"
+        autocomplete="off"
+      />
+      <div id="suggestions" class="suggestions hidden"></div>
     </div>
 
-    <div id="result" class="result"></div>
+    <button id="checkBtn" disabled data-i18n="checkBtn">เช็ค</button>
+
+    <div id="result" class="result hidden"></div>
   </main>
 
+  <script src="i18n.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

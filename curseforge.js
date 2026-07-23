@@ -3,6 +3,28 @@
 // พอสมัคร key ได้แล้ว ใส่ค่าใน .env -> ระบบจะเรียกของจริงทันทีโดยไม่ต้องแก้ที่อื่นเลย
 
 const CF_BASE = "https://api.curseforge.com/v1";
+const mockMods = require("./mockMods");
+
+// ค้นหา modpack จากชื่อ ใช้เติมช่อง autocomplete บนหน้าเว็บ
+async function searchMods(query) {
+  const apiKey = process.env.CURSEFORGE_API_KEY;
+
+  if (!apiKey) {
+    const q = query.toLowerCase();
+    return mockMods.filter((m) => m.name.toLowerCase().includes(q));
+  }
+
+  // ของจริง: gameId 432 = Minecraft, classId 4471 = Modpacks
+  const url = `${CF_BASE}/mods/search?gameId=432&classId=4471&searchFilter=${encodeURIComponent(
+    query
+  )}&pageSize=10`;
+  const res = await fetch(url, {
+    headers: { "x-api-key": apiKey, Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`curseforge search failed: ${res.status}`);
+  const data = await res.json();
+  return data.data.map((m) => ({ id: String(m.id), name: m.name }));
+}
 
 async function checkCurseForge(modpackId) {
   const apiKey = process.env.CURSEFORGE_API_KEY;
@@ -53,4 +75,4 @@ async function realCheck(modpackId, apiKey) {
   return { hasServerPack: true, downloadUrl: downloadData.data };
 }
 
-module.exports = { checkCurseForge };
+module.exports = { checkCurseForge, searchMods };

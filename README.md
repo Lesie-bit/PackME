@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # PackME
 
 หา หรือสร้าง server pack ให้ modpack จาก CurseForge โดยอัตโนมัติ
@@ -15,18 +14,28 @@ logic ง่ายๆ: modpack ID ลงท้ายเลขคู่ = มี 
 พอได้ API key จริง แค่ใส่ค่าใน `.env` → ระบบจะสลับไปเรียกของจริงเองอัตโนมัติ
 โดยไม่ต้องแก้โค้ดที่อื่นเลย (ดูฟังก์ชัน `realCheck` ใน `curseforge.js`)
 
+## ฟีเจอร์
+
+- ค้นหา modpack แบบพิมพ์ชื่อ (autocomplete dropdown)
+- สลับภาษาไทย/อังกฤษได้ (จำค่าไว้ใน localStorage)
+- เช็ค + สร้าง server pack ตามเดิม
+- เก็บสถานะ job ลงไฟล์ (`packme.db.json`) ไม่หายตอน restart server แล้ว
+
 ## โครงสร้างไฟล์
 
 ```
 PackME/
-├── server.js        เซิร์ฟเวอร์หลัก (Express) มี endpoint และ in-memory job tracking
-├── curseforge.js     จุดสลับ mock <-> ของจริง (CurseForge API)
+├── server.js         เซิร์ฟเวอร์หลัก (Express) รวม endpoint ค้นหา + เช็ค + job status
+├── curseforge.js      จุดสลับ mock <-> ของจริง (CurseForge API) มี searchMods + checkCurseForge
+├── mockMods.js         รายชื่อ modpack ปลอมไว้ค้นหาก่อนมี API key จริง
+├── db.js               เก็บ/อ่านสถานะ job เป็นไฟล์ JSON (ไม่ต้องติดตั้ง database engine)
 ├── public/
-│   ├── index.html    หน้าเว็บ
-│   ├── style.css      สไตล์
-│   └── script.js       เรียก API + polling สถานะ job
-├── .env.example       template ตัวแปรลับ
-└── .gitignore          กัน node_modules และ .env หลุดขึ้น GitHub
+│   ├── index.html     หน้าเว็บ
+│   ├── style.css       ดีไซน์
+│   ├── i18n.js          คำแปลไทย/อังกฤษ + ฟังก์ชันสลับภาษา
+│   └── script.js        เรียก API + ค้นหา + polling สถานะ job
+├── .env.example        template ตัวแปรลับ
+└── .gitignore           กัน node_modules, .env, packme.db.json หลุดขึ้น GitHub
 ```
 
 ## วิธีรัน
@@ -46,8 +55,6 @@ npm start
 
 ## ข้อจำกัดที่รู้อยู่แล้ว (ต่อยอดได้ในอนาคต)
 
-- สถานะ job เก็บใน memory เฉยๆ — restart server แล้วข้อมูลหาย (พอ deploy จริงจัง ค่อยย้ายไป database)
+- `packme.db.json` เป็นไฟล์เดียว เหมาะกับผู้ใช้ไม่เยอะ ถ้า deploy จริงจังมีคนใช้เยอะ ค่อยย้ายไป Postgres/MySQL
 - ยังไม่ได้ต่อ ServerPackCreator จริงสำหรับสร้าง server pack เมื่อไม่มีไฟล์สำเร็จรูป (ตอนนี้ปลอม resultUrl ไว้)
-=======
-# PackME
->>>>>>> 64e65ee4e3db987f4564c5199a65c5f0d9163d14
+- การค้นหาตอนนี้ใช้รายชื่อปลอมใน `mockMods.js` 8 รายการ พอมี API key จะสลับเป็นค้นหาจริงทั้งวงการ CurseForge ทันที

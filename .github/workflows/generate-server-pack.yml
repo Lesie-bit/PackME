@@ -1,0 +1,55 @@
+name: Generate Server Pack
+
+on:
+  repository_dispatch:
+    types: [generate-server-pack]
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download modpack from CurseForge
+        run: |
+          mkdir -p work/input work/output
+          curl -L "${{ github.event.client_payload.download_url }}" -o work/modpack.zip
+
+      - name: Extract modpack
+        run: unzip -q work/modpack.zip -d work/input
+
+      - name: Run ServerPackCreator
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/work/input:/data/modpacks/modpack \
+            -v ${{ github.workspace }}/work/output:/data/server-packs \
+            griefed/serverpackcreator:latest \
+            --modpack-dir /data/modpacks/modpack \
+            --output-dir /data/server-packs
+
+      - name: Find generated zip
+        id: find_zip
+        run: echo "zip_path=$(find work/output -name '*.zip' | head -n 1)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload as GitHub Release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="serverpack-${{ github.event.client_payload.modpack_id }}-${{ github.run_id }}"
+          gh release create "$TAG" "${{ steps.find_zip.outputs.zip_path }}" \
+            --title "Server pack: modpack ${{ github.event.client_payload.modpack_id }}" \
+            --notes "สร้างอัตโนมัติจาก PackME"
+          FILENAME=$(basename "${{ steps.find_zip.outputs.zip_path }}")
+          echo "download_url=https://github.com/${{ github.repository }}/releases/download/$TAG/$FILENAME" >> "$GITHUB_OUTPUT"
+
+      - name: Notify PackME backend
+        run: |
+          curl -X POST "${{ secrets.PACKME_API_URL }}/api/jobs/${{ github.event.client_payload.job_id }}/complete" \
+            -H "Authorization: Bearer ${{ secrets.PACKME_WORKER_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"resultUrl\": \"${{ steps.release.outputs.download_url }}\"}"

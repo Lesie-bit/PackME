@@ -44,6 +44,8 @@ function mockCheck(modpackId) {
     downloadUrl: hasServerPack
       ? `https://example.com/fake-official/${modpackId}.zip`
       : null,
+    // ใช้ตอนไม่มี server pack สำเร็จรูป -> ส่งให้ worker ไปดาวน์โหลด client pack มาแปลง
+    clientDownloadUrl: `https://example.com/fake-client/${modpackId}.zip`,
   };
 }
 
@@ -62,7 +64,12 @@ async function realCheck(modpackId, apiKey) {
   const serverPackFileId = fileData.data.serverPackFileId;
 
   if (!serverPackFileId) {
-    return { hasServerPack: false, downloadUrl: null };
+    // ไม่มี server pack สำเร็จรูป -> ส่ง downloadUrl ของ client pack เองกลับไปด้วย
+    return {
+      hasServerPack: false,
+      downloadUrl: null,
+      clientDownloadUrl: fileData.data.downloadUrl,
+    };
   }
 
   const downloadRes = await fetch(
@@ -72,7 +79,7 @@ async function realCheck(modpackId, apiKey) {
   if (!downloadRes.ok) throw new Error(`curseforge download url failed: ${downloadRes.status}`);
   const downloadData = await downloadRes.json();
 
-  return { hasServerPack: true, downloadUrl: downloadData.data };
+  return { hasServerPack: true, downloadUrl: downloadData.data, clientDownloadUrl: null };
 }
 
 module.exports = { checkCurseForge, searchMods };

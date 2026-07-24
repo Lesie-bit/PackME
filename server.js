@@ -2,6 +2,7 @@ require("dotenv/config");
 const express = require("express");
 const { checkCurseForge, searchMods } = require("./curseforge");
 const { createJob, updateJob, getJob } = require("./db");
+const { startGeneration } = require("./pipeline");
 
 const app = express();
 app.use(express.static("public"));
@@ -33,12 +34,9 @@ app.get("/api/modpacks/:id/server-pack", async (req, res) => {
       return res.json({ type: "official", downloadUrl: info.downloadUrl });
     }
 
-const jobId = String(jobCounter++);
-    await createJob(jobId, modpackId);
-
-    setTimeout(async () => {
-      await updateJob(jobId, "done", `https://example.com/generated/${modpackId}.zip`);
-    }, 5000);
+    const jobId = String(jobCounter++);
+    createJob(jobId, modpackId);
+    await startGeneration(jobId, modpackId, info.clientDownloadUrl);
 
     return res.json({ type: "generating", jobId });
   } catch (err) {
@@ -48,10 +46,20 @@ const jobId = String(jobCounter++);
 });
 
 // endpoint ให้ frontend เรียกวนซ้ำ (polling) เพื่อเช็คว่า job เสร็จหรือยัง
-app.get("/api/jobs/:jobId", async (req, res) => {
-  const job = await getJob(req.params.jobId);
+app.get("/api/jobs/:jobId", (req, res) => {
+  const job = getJob(req.params.jobId);
   if (!job) return res.status(404).json({ error: "ไม่พบ job นี้" });
   res.json({ status: job.status, resultUrl: job.result_url });
+});
+
+// endpoint ให้ GitHub Actions worker เรียกกลับมาตอนสร้าง server pack เสร็จแล้ว
+app.post("/api/jobs/:jobId/complete", express.json(), (req, res) => {
+  const auth = req.headers.authorization;
+  if (auth !== `Bearer ${process.env.PACKME_WORKER_SECRET}`) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+  updateJob(req.params.jobId, "done", req.body.resultUrl);
+  res.json({ ok: true });
 });
 
 const port = process.env.PORT || 4000;

@@ -7,7 +7,7 @@ const { startGeneration } = require("./pipeline");
 const app = express();
 app.use(express.static("public"));
 
-let jobCounter = 1;
+
 
 // endpoint ค้นหา modpack เอาไว้เติม dropdown แบบพิมพ์ชื่อ
 app.get("/api/modpacks/search", async (req, res) => {
@@ -34,8 +34,8 @@ app.get("/api/modpacks/:id/server-pack", async (req, res) => {
       return res.json({ type: "official", downloadUrl: info.downloadUrl });
     }
 
-    const jobId = String(jobCounter++);
-    createJob(jobId, modpackId);
+    const jobId = crypto.randomUUID();
+    await createJob(jobId, modpackId);
     await startGeneration(jobId, modpackId, info.clientDownloadUrl);
 
     return res.json({ type: "generating", jobId });
@@ -46,8 +46,8 @@ app.get("/api/modpacks/:id/server-pack", async (req, res) => {
 });
 
 // endpoint ให้ frontend เรียกวนซ้ำ (polling) เพื่อเช็คว่า job เสร็จหรือยัง
-app.get("/api/jobs/:jobId", (req, res) => {
-  const job = getJob(req.params.jobId);
+app.get("/api/jobs/:jobId", async (req, res) => {
+  const job = await getJob(req.params.jobId);
   if (!job) return res.status(404).json({ error: "ไม่พบ job นี้" });
   res.json({ status: job.status, resultUrl: job.result_url });
 });
@@ -65,4 +65,5 @@ app.post("/api/jobs/:jobId/complete", express.json(), (req, res) => {
 const port = process.env.PORT || 4000;
 app.listen(port, () => {
   console.log(`PackME running at http://localhost:${port}`);
-});
+}); 
+const crypto = require("crypto");

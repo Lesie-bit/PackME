@@ -5,19 +5,30 @@
 const CF_BASE = "https://api.curseforge.com/v1";
 const mockMods = require("./mockMods");
 
-// ค้นหา modpack จากชื่อ ใช้เติมช่อง autocomplete บนหน้าเว็บ
+// ถ้า input เป็นลิงก์หน้า modpack ของ CurseForge ให้ดึง slug ออกมา
+function extractSlugFromUrl(input) {
+  const match = input.match(/curseforge\.com\/minecraft\/modpacks\/([a-z0-9-]+)/i);
+  return match ? match[1] : null;
+}
+
+// ค้นหา modpack จากชื่อ (หรือวาง URL ก็ได้) ใช้เติมช่อง autocomplete บนหน้าเว็บ
 async function searchMods(query) {
   const apiKey = process.env.CURSEFORGE_API_KEY;
+  const slug = extractSlugFromUrl(query);
 
   if (!apiKey) {
-    const q = query.toLowerCase();
+    const q = (slug || query).toLowerCase();
     return mockMods.filter((m) => m.name.toLowerCase().includes(q));
   }
 
-  // ของจริง: gameId 432 = Minecraft, classId 4471 = Modpacks
-  const url = `${CF_BASE}/mods/search?gameId=432&classId=4471&searchFilter=${encodeURIComponent(
-    query
-  )}&pageSize=10`;
+  // ถ้าเป็น URL -> ค้นหาแบบตรงเป๊ะด้วย slug (แม่นสุด ไม่ปนกับชื่อคล้ายกัน)
+  // ถ้าเป็นคำค้นทั่วไป -> ค้นแบบ searchFilter แล้วเรียงตามความนิยมก่อน (sortField=2 = Popularity)
+  const url = slug
+    ? `${CF_BASE}/mods/search?gameId=432&classId=4471&slug=${encodeURIComponent(slug)}`
+    : `${CF_BASE}/mods/search?gameId=432&classId=4471&searchFilter=${encodeURIComponent(
+        query
+      )}&sortField=2&sortOrder=desc&pageSize=10`;
+
   const res = await fetch(url, {
     headers: { "x-api-key": apiKey, Accept: "application/json" },
   });

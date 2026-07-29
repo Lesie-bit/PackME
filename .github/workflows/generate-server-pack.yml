@@ -3,6 +3,17 @@ name: Generate Server Pack
 on:
   repository_dispatch:
     types: [generate-server-pack]
+  workflow_dispatch:
+    inputs:
+      modpack_id:
+        description: "modpack id (ใส่อะไรก็ได้ตอนเทส)"
+        required: true
+      download_url:
+        description: "ลิงก์ดาวน์โหลด modpack zip ตรงๆ"
+        required: true
+      job_id:
+        description: "job id (ใส่ test-1 ก็ได้ตอนเทส)"
+        required: true
 
 permissions:
   contents: write
@@ -10,14 +21,27 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
+    env:
+      MODPACK_ID: ${{ github.event.inputs.modpack_id || github.event.client_payload.modpack_id }}
+      DOWNLOAD_URL: ${{ github.event.inputs.download_url || github.event.client_payload.download_url }}
+      JOB_ID: ${{ github.event.inputs.job_id || github.event.client_payload.job_id }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Download modpack from CurseForge
+      - name: Download modpack
         run: |
           mkdir -p work/input work/output
-          curl -L "${{ github.event.client_payload.download_url }}" -o work/modpack.zip
+          curl -L -f \
+            -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" \
+            "$DOWNLOAD_URL" -o work/modpack.zip
+
+      - name: Verify downloaded file
+        run: |
+          echo "ขนาดไฟล์:"
+          ls -lh work/modpack.zip
+          echo "ประเภทไฟล์จริง:"
+          file work/modpack.zip
 
       - name: Extract modpack
         run: unzip -q work/modpack.zip -d work/input
@@ -40,16 +64,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="serverpack-${{ github.event.client_payload.modpack_id }}-${{ github.run_id }}"
+          TAG="serverpack-$MODPACK_ID-${{ github.run_id }}"
           gh release create "$TAG" "${{ steps.find_zip.outputs.zip_path }}" \
-            --title "Server pack: modpack ${{ github.event.client_payload.modpack_id }}" \
+            --title "Server pack: modpack $MODPACK_ID" \
             --notes "สร้างอัตโนมัติจาก PackME"
           FILENAME=$(basename "${{ steps.find_zip.outputs.zip_path }}")
           echo "download_url=https://github.com/${{ github.repository }}/releases/download/$TAG/$FILENAME" >> "$GITHUB_OUTPUT"
 
       - name: Notify PackME backend
         run: |
-          curl -X POST "${{ secrets.PACKME_API_URL }}/api/jobs/${{ github.event.client_payload.job_id }}/complete" \
+          curl -X POST "${{ secrets.PACKME_API_URL }}/api/jobs/$JOB_ID/complete" \
             -H "Authorization: Bearer ${{ secrets.PACKME_WORKER_SECRET }}" \
             -H "Content-Type: application/json" \
             -d "{\"resultUrl\": \"${{ steps.release.outputs.download_url }}\"}"

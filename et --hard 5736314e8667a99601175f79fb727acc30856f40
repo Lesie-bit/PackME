@@ -1,0 +1,60 @@
+[33mcommit e290ecbaf48018890df6e1629acdb2cb5c5df64b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Lesie-bit <owothw@gmail.com>
+Date:   Sat Jul 25 19:48:14 2026 +0700
+
+    แก้บัค Code
+
+[33mcommit 7a2192fcd068a61ea4a4fcdc3f4a0c3b22247c09[m
+Author: Lesie-bit <owothw@gmail.com>
+Date:   Sat Jul 25 19:46:09 2026 +0700
+
+    แก้บัคโหลดจากลิ้งไม่ได้
+
+[33mcommit 18b618d9872114064432fec14ad8b57162bcf2d3[m
+Author: Lesie-bit <owothw@gmail.com>
+Date:   Sat Jul 25 19:39:41 2026 +0700
+
+    เพิ่มระบบเทสด้วยลิ้ง
+
+[33mcommit 5736314e8667a99601175f79fb727acc30856f40[m
+Author: Lesie-bit <owothw@gmail.com>
+Date:   Sat Jul 25 19:34:53 2026 +0700
+
+    แก้บัค ระบบการสั่ง Job
+
+[33mcommit bb9510b10401159cff39da897170768798703502[m
+Author: Lesie-bit <owothw@gmail.com>
+Date:   Fri Jul 24 19:11:23 2026 +0700
+
+    เพิ่มworker สำหรับสร้างModapck
+
+[33mcommit 15a10141c3c68600841ad45b171fb65a91eb881d[m
+Author: Lesie-bit <owothw@gmail.com>
+Date:   Thu Jul 23 10:06:00 2026 +0700
+
+    เชื่อม Supabase
+
+[33mcommit 3f2b07386964fc8bd918d05ea82582fcb7d1d104[m
+Author: Lesie-bit <owothw@gmail.com>
+Date:   Thu Jul 23 09:35:38 2026 +0700
+
+    เพิ่มDatabase และความสวยงาม
+
+[33mcommit d063223f0506fd8832c0cc480dc3175561f2fbc6[m
+Merge: 57f22dd 64e65ee
+Author: Lesie-bit <owothw@gmail.com>
+Date:   Thu Jul 23 09:29:10 2026 +0700
+
+    เพิ่มลายเซ็น
+
+[33mcommit 57f22dde3673636be41259b1233e067c1042545d[m
+Author: Lesie-bit <owothw@gmail.com>
+Date:   Thu Jul 23 09:22:57 2026 +0700
+
+    first commit
+
+[33mcommit 64e65ee4e3db987f4564c5199a65c5f0d9163d14[m
+Author: Lesie-bit <owothw@gmail.com>
+Date:   Tue Jul 21 19:31:47 2026 +0700
+
+    Initial commit

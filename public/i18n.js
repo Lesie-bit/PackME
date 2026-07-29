@@ -2,7 +2,7 @@ const translations = {
   th: {
     title: "PackME",
     tagline: "หา หรือสร้าง server pack ให้ modpack จาก CurseForge",
-    searchPlaceholder: "พิมพ์ชื่อ modpack เช่น RLCraft",
+    searchPlaceholder: "พิมพ์ชื่อ หรือวางลิงก์ CurseForge เช่น RLCraft",
     checkBtn: "เช็ค",
     noResults: "ไม่พบ modpack ที่ตรงกับคำค้นหา",
     statusChecking: "กำลังเช็ค...",
@@ -16,7 +16,7 @@ const translations = {
   en: {
     title: "PackME",
     tagline: "Find or generate a server pack for any CurseForge modpack",
-    searchPlaceholder: "Type a modpack name, e.g. RLCraft",
+    searchPlaceholder: "Type a name or paste a CurseForge link, e.g. RLCraft",
     checkBtn: "Check",
     noResults: "No modpacks match your search",
     statusChecking: "Checking...",

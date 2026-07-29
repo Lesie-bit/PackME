@@ -46,14 +46,40 @@ jobs:
       - name: Extract modpack
         run: unzip -q work/modpack.zip -d work/input
 
-      - name: Run ServerPackCreator
+- name: Generate SPC config from manifest
+        run: |
+          node -e "
+            const m = require('./work/input/manifest.json');
+            const loaderRaw = m.minecraft.modLoaders[0].id; // เช่น 'forge-47.2.0'
+            const [loaderName, ...verParts] = loaderRaw.split('-');
+            const loaderVersion = verParts.join('-');
+            const loaderCap = loaderName.charAt(0).toUpperCase() + loaderName.slice(1);
+            const conf = [
+              'modpackDir = \"/data/input\"',
+              'clientMods = []',
+              'copyDirs = [config, mods, scripts, defaultconfigs]',
+              'includeServerInstallation = true',
+              'minecraftVersion = \"' + m.minecraft.version + '\"',
+              'modLoader = \"' + loaderCap + '\"',
+              'modLoaderVersion = \"' + loaderVersion + '\"',
+              'includeServerIcon = true',
+              'includeServerProperties = true',
+              'includeStartScripts = true',
+              'includeZipCreation = true',
+              'javaArgs = \"empty\"',
+            ].join('\n');
+            require('fs').writeFileSync('work/serverpackcreator.conf', conf);
+          "
+          echo "----- config ที่สร้างได้ -----"
+          cat work/serverpackcreator.conf
+
+      - name: Run ServerPackCreator (CLI mode)
         run: |
           docker run --rm \
-            -v ${{ github.workspace }}/work/input:/data/modpacks/modpack \
-            -v ${{ github.workspace }}/work/output:/data/server-packs \
-            griefed/serverpackcreator:latest \
-            --modpack-dir /data/modpacks/modpack \
-            --output-dir /data/server-packs
+            -v ${{ github.workspace }}/work/input:/data/input \
+            -v ${{ github.workspace }}/work/serverpackcreator.conf:/app/serverpackcreator/serverpackcreator.conf \
+            -v ${{ github.workspace }}/work/output:/app/serverpackcreator/server-packs \
+            griefed/serverpackcreator:latest -cli
 
       - name: Find generated zip
         id: find_zip

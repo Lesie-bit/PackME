@@ -88,11 +88,11 @@ jobs:
       - name: Move generated config next to the JAR
         run: cp work/serverpackcreator.conf work/spc/serverpackcreator.conf
 
-      - name: Run ServerPackCreator (CLI mode)
+      - name: Run ServerPackCreator (CLI mode, with fake TTY)
         working-directory: work/spc
         run: |
           JAR_FILE=$(ls *.jar | head -n 1)
-          java -jar "$JAR_FILE" -cli
+          script -qec "java -jar $JAR_FILE -cli" /dev/null
 
       - name: Find generated zip
         id: find_zip

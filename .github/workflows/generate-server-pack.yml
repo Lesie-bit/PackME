@@ -73,13 +73,26 @@ jobs:
           echo "----- config ที่สร้างได้ -----"
           cat work/serverpackcreator.conf
 
-      - name: Run ServerPackCreator (CLI mode)
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Download ServerPackCreator JAR
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}/work/input:/data/input \
-            -v ${{ github.workspace }}/work/serverpackcreator.conf:/app/serverpackcreator/serverpackcreator.conf \
-            -v ${{ github.workspace }}/work/output:/app/serverpackcreator/server-packs \
-            griefed/serverpackcreator:latest -cli
+          gh release download --repo Griefed/ServerPackCreator --pattern "*.jar" --dir work/spc
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Move generated config next to the JAR
+        run: cp work/serverpackcreator.conf work/spc/serverpackcreator.conf
+
+      - name: Run ServerPackCreator (CLI mode)
+        working-directory: work/spc
+        run: |
+          JAR_FILE=$(ls *.jar | head -n 1)
+          java -jar "$JAR_FILE" -cli
 
       - name: Find generated zip
         id: find_zip

@@ -46,7 +46,7 @@ jobs:
       - name: Extract modpack
         run: unzip -q work/modpack.zip -d work/input
 
-- name: Generate SPC config from manifest
+      - name: Generate SPC config from manifest
         run: |
           node -e "
             const m = require('./work/input/manifest.json');

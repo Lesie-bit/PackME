@@ -49,28 +49,48 @@ jobs:
       - name: Generate SPC config from manifest
         run: |
           node -e "
-            const m = require('./work/input/manifest.json');
-            const loaderRaw = m.minecraft.modLoaders[0].id; // เช่น 'forge-47.2.0'
+            const fs = require('fs');
+            const path = require('path');
+
+            const inputDir = path.resolve('work/input');
+            const m = require(path.join(inputDir, 'manifest.json'));
+            const loaderRaw = m.minecraft.modLoaders[0].id;
             const [loaderName, ...verParts] = loaderRaw.split('-');
             const loaderVersion = verParts.join('-');
             const loaderCap = loaderName.charAt(0).toUpperCase() + loaderName.slice(1);
+
+            const dirs = ['config', 'mods', 'scripts', 'defaultconfigs']
+              .filter((dir) => fs.existsSync(path.join(inputDir, dir)));
+
+            if (!dirs.includes('mods')) {
+              throw new Error('ไม่พบ work/input/mods — ไฟล์นี้น่าจะเป็น CurseForge export ที่มีแค่ manifest/overrides');
+            }
+
+            const inclusions = dirs.flatMap((source) => [
+              '[[inclusions]]',
+              'source = ' + JSON.stringify(source),
+              'destination = \"\"',
+              'inclusionFilter = \"\"',
+              'exclusionFilter = \"\"'
+            ]);
+
             const conf = [
-              'modpackDir = \"/data/input\"',
+              'modpackDir = ' + JSON.stringify(inputDir),
               'clientMods = []',
-              'copyDirs = [config, mods, scripts, defaultconfigs]',
-              'includeServerInstallation = true',
-              'minecraftVersion = \"' + m.minecraft.version + '\"',
-              'modLoader = \"' + loaderCap + '\"',
-              'modLoaderVersion = \"' + loaderVersion + '\"',
+              'whitelist = []',
+              ...inclusions,
+              'minecraftVersion = ' + JSON.stringify(m.minecraft.version),
+              'modLoader = ' + JSON.stringify(loaderCap),
+              'modLoaderVersion = ' + JSON.stringify(loaderVersion),
               'includeServerIcon = true',
               'includeServerProperties = true',
-              'includeStartScripts = true',
               'includeZipCreation = true',
-              'javaArgs = \"empty\"',
-            ].join('\n');
-            require('fs').writeFileSync('work/serverpackcreator.conf', conf);
+              'javaArgs = \"empty\"'
+            ].join('\n\n');
+
+            fs.writeFileSync('work/serverpackcreator.conf', conf);
           "
-          echo "----- config ที่สร้างได้ -----"
+
           cat work/serverpackcreator.conf
 
       - name: Set up Java
@@ -81,22 +101,32 @@ jobs:
 
       - name: Download ServerPackCreator JAR
         run: |
-          gh release download --repo Griefed/ServerPackCreator --pattern "*.jar" --dir work/spc
+          mkdir -p work/spc
+          gh release download 8.1.2 \
+            --repo Griefed/ServerPackCreator \
+            --pattern "*.jar" \
+            --dir work/spc
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Move generated config next to the JAR
-        run: cp work/serverpackcreator.conf work/spc/serverpackcreator.conf
-
-      - name: Run ServerPackCreator (CLI mode, with fake TTY)
+      - name: Run ServerPackCreator
         working-directory: work/spc
         run: |
-          JAR_FILE=$(ls *.jar | head -n 1)
-          script -qec "java -jar $JAR_FILE -cli" /dev/null
+          set -euo pipefail
+          JAR_FILE="$(find . -maxdepth 1 -type f -name '*.jar' -print -quit)"
+          test -n "$JAR_FILE"
+
+          java -jar "$JAR_FILE" \
+            --home "$GITHUB_WORKSPACE/work/spc-home" \
+            -config "$GITHUB_WORKSPACE/work/serverpackcreator.conf" \
+            --destination "$GITHUB_WORKSPACE/work/output/serverpack"
 
       - name: Find generated zip
         id: find_zip
-        run: echo "zip_path=$(find work/output -name '*.zip' | head -n 1)" >> "$GITHUB_OUTPUT"
+        run: |
+          ZIP_PATH="$GITHUB_WORKSPACE/work/output/serverpack_server_pack.zip"
+          test -s "$ZIP_PATH"
+          echo "zip_path=$ZIP_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Upload as GitHub Release
         id: release

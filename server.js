@@ -1,4 +1,5 @@
 require("dotenv/config");
+const crypto = require("crypto");
 const express = require("express");
 const { checkCurseForge, searchMods } = require("./curseforge");
 const { createJob, updateJob, getJob } = require("./db");
@@ -6,8 +7,6 @@ const { startGeneration } = require("./pipeline");
 
 const app = express();
 app.use(express.static("public"));
-
-
 
 // endpoint ค้นหา modpack เอาไว้เติม dropdown แบบพิมพ์ชื่อ
 app.get("/api/modpacks/search", async (req, res) => {
@@ -34,6 +33,10 @@ app.get("/api/modpacks/:id/server-pack", async (req, res) => {
       return res.json({ type: "official", downloadUrl: info.downloadUrl });
     }
 
+    if (!info.clientDownloadUrl) {
+      return res.status(502).json({ error: "ไม่พบลิงก์ดาวน์โหลด modpack จาก CurseForge" });
+    }
+
     const jobId = crypto.randomUUID();
     await createJob(jobId, modpackId);
     await startGeneration(jobId, modpackId, info.clientDownloadUrl);
@@ -53,17 +56,22 @@ app.get("/api/jobs/:jobId", async (req, res) => {
 });
 
 // endpoint ให้ GitHub Actions worker เรียกกลับมาตอนสร้าง server pack เสร็จแล้ว
-app.post("/api/jobs/:jobId/complete", express.json(), (req, res) => {
+app.post("/api/jobs/:jobId/complete", express.json(), async (req, res) => {
   const auth = req.headers.authorization;
   if (auth !== `Bearer ${process.env.PACKME_WORKER_SECRET}`) {
     return res.status(401).json({ error: "unauthorized" });
   }
-  updateJob(req.params.jobId, "done", req.body.resultUrl);
-  res.json({ ok: true });
+
+  try {
+    await updateJob(req.params.jobId, "done", req.body.resultUrl);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: "อัปเดตสถานะ job ไม่สำเร็จ" });
+  }
 });
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => {
   console.log(`PackME running at http://localhost:${port}`);
-}); 
-const crypto = require("crypto");
+});

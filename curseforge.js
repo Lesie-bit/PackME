@@ -75,11 +75,21 @@ async function realCheck(modpackId, apiKey) {
   const serverPackFileId = fileData.data.serverPackFileId;
 
   if (!serverPackFileId) {
-    // ไม่มี server pack สำเร็จรูป -> ส่ง downloadUrl ของ client pack เองกลับไปด้วย
+    // ไม่มี server pack สำเร็จรูป -> ขอลิงก์โหลด client pack ผ่าน endpoint เดียวกับตอนมี server pack
+    // (เชื่อถือได้กว่าอ่าน fileData.data.downloadUrl ตรงๆ ซึ่งบางครั้งเป็น null)
+    const clientDownloadRes = await fetch(
+      `${CF_BASE}/mods/${modpackId}/files/${mainFileId}/download-url`,
+      { headers }
+    );
+    if (!clientDownloadRes.ok) {
+      throw new Error(`curseforge client download url failed: ${clientDownloadRes.status}`);
+    }
+    const clientDownloadData = await clientDownloadRes.json();
+
     return {
       hasServerPack: false,
       downloadUrl: null,
-      clientDownloadUrl: fileData.data.downloadUrl,
+      clientDownloadUrl: clientDownloadData.data,
     };
   }
 

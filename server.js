@@ -17,7 +17,7 @@ app.get("/api/modpacks/search", async (req, res) => {
     res.json(results);
   } catch (err) {
     console.error(err);
-    res.status(502).json({ error: "ค้นหาไม่สำเร็จ" });
+    res.status(502).json({ error: "SEARCH_FAILED" });
   }
 });
 
@@ -27,7 +27,7 @@ app.get("/api/modpacks/:id/files", async (req, res) => {
     res.json(files);
   } catch (err) {
     console.error(err);
-    res.status(502).json({ error: "โหลดรายการเวอร์ชันไม่สำเร็จ" });
+    res.status(502).json({ error: "FILES_LOAD_FAILED" });
   }
 });
 
@@ -43,7 +43,7 @@ app.get("/api/modpacks/:id/server-pack", async (req, res) => {
     }
 
     if (!info.clientDownloadUrl) {
-      return res.status(502).json({ error: "ไม่พบลิงก์ดาวน์โหลด modpack จาก CurseForge" });
+      return res.status(502).json({ error: "NO_DOWNLOAD_URL" });
     }
 
     const jobId = crypto.randomUUID();
@@ -54,24 +54,22 @@ app.get("/api/modpacks/:id/server-pack", async (req, res) => {
   } catch (err) {
     console.error(err);
     if (err.code === "DISTRIBUTION_DISABLED") {
-      return res.status(403).json({
-        error: "modpack นี้ไม่อนุญาตให้เข้าถึงผ่าน third-party API (เจ้าของปิดสิทธิ์นี้ไว้)",
-      });
+      return res.status(403).json({ error: "DISTRIBUTION_DISABLED" });
     }
-    return res.status(502).json({ error: "ตรวจสอบข้อมูล modpack ไม่สำเร็จ" });
+    return res.status(502).json({ error: "CHECK_FAILED" });
   }
 });
 
 app.get("/api/jobs/:jobId", async (req, res) => {
   const job = await getJob(req.params.jobId);
-  if (!job) return res.status(404).json({ error: "ไม่พบ job นี้" });
+  if (!job) return res.status(404).json({ error: "JOB_NOT_FOUND" });
   res.json({ status: job.status, resultUrl: job.result_url });
 });
 
 app.post("/api/jobs/:jobId/complete", express.json(), async (req, res) => {
   const auth = req.headers.authorization;
   if (auth !== `Bearer ${process.env.PACKME_WORKER_SECRET}`) {
-    return res.status(401).json({ error: "unauthorized" });
+    return res.status(401).json({ error: "UNAUTHORIZED" });
   }
 
   try {
@@ -79,7 +77,7 @@ app.post("/api/jobs/:jobId/complete", express.json(), async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
-    res.status(502).json({ error: "อัปเดตสถานะ job ไม่สำเร็จ" });
+    res.status(502).json({ error: "JOB_UPDATE_FAILED" });
   }
 });
 

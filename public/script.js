@@ -30,8 +30,12 @@ input.addEventListener("input", () => {
 
 async function searchModpacks(query) {
   const res = await fetch(`/api/modpacks/search?q=${encodeURIComponent(query)}`);
-  const results = await res.json();
-  renderSuggestions(results);
+  const data = await res.json();
+  if (!res.ok) {
+    toast(tError(data.error), "error");
+    return;
+  }
+  renderSuggestions(data);
 }
 
 function renderSuggestions(results) {
@@ -69,10 +73,11 @@ async function selectModpack(mod) {
 
   try {
     const res = await fetch(`/api/modpacks/${mod.id}/files`);
-    const files = await res.json();
-    renderVersionOptions(files);
+    const data = await res.json();
+    if (!res.ok) throw new Error(tError(data.error));
+    renderVersionOptions(data);
   } catch (err) {
-    toast(t("statusError"), "error");
+    toast(err.message, "error");
   }
 }
 
@@ -112,7 +117,7 @@ checkBtn.addEventListener("click", async () => {
       `/api/modpacks/${selectedModpackId}/server-pack?fileId=${encodeURIComponent(fileId)}`
     );
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || t("statusError"));
+    if (!res.ok) throw new Error(tError(data.error));
 
     if (data.type === "official") {
       toast(t("statusOfficial"), "success");
@@ -123,8 +128,8 @@ checkBtn.addEventListener("click", async () => {
       pollJob(data.jobId);
     }
   } catch (err) {
-    toast(`${t("statusError")}: ${err.message}`, "error");
-    showResult(`${t("statusError")}: ${err.message}`);
+    toast(err.message, "error");
+    showResult(err.message);
     checkBtn.disabled = false;
   }
 });
@@ -133,6 +138,14 @@ function pollJob(jobId) {
   const interval = setInterval(async () => {
     const res = await fetch(`/api/jobs/${jobId}`);
     const job = await res.json();
+
+    if (!res.ok) {
+      clearInterval(interval);
+      toast(tError(job.error), "error");
+      showResult(tError(job.error));
+      checkBtn.disabled = false;
+      return;
+    }
 
     if (job.status === "done") {
       clearInterval(interval);

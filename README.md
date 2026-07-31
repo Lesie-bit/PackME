@@ -8,7 +8,7 @@
 
 หา หรือสร้าง server pack ให้ modpack จาก CurseForge โดยอัตโนมัติ
 
-🔗 **Live demo:** [ใส่ URL Render ของคุณ]
+🔗 **Live demo:** https://packme-x3j7.onrender.com
 
 ### ฟีเจอร์
 
@@ -74,7 +74,7 @@ npm start
 
 Find or automatically generate a server pack for any CurseForge modpack.
 
-🔗 **Live demo:** [add your Render URL]
+🔗 **Live demo:** (https://packme-x3j7.onrender.com)
 
 ### Features
 

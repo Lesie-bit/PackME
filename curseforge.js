@@ -5,13 +5,11 @@
 const CF_BASE = "https://api.curseforge.com/v1";
 const mockMods = require("./mockMods");
 
-// ถ้า input เป็นลิงก์หน้า modpack ของ CurseForge ให้ดึง slug ออกมา
 function extractSlugFromUrl(input) {
   const match = input.match(/curseforge\.com\/minecraft\/modpacks\/([a-z0-9-]+)/i);
   return match ? match[1] : null;
 }
 
-// ค้นหา modpack จากชื่อ (หรือวาง URL ก็ได้) ใช้เติมช่อง autocomplete บนหน้าเว็บ
 async function searchMods(query) {
   const apiKey = process.env.CURSEFORGE_API_KEY;
   const slug = extractSlugFromUrl(query);
@@ -21,8 +19,6 @@ async function searchMods(query) {
     return mockMods.filter((m) => m.name.toLowerCase().includes(q));
   }
 
-  // ถ้าเป็น URL -> ค้นหาแบบตรงเป๊ะด้วย slug (แม่นสุด ไม่ปนกับชื่อคล้ายกัน)
-  // ถ้าเป็นคำค้นทั่วไป -> ค้นแบบ searchFilter แล้วเรียงตามความนิยมก่อน (sortField=2 = Popularity)
   const url = slug
     ? `${CF_BASE}/mods/search?gameId=432&classId=4471&slug=${encodeURIComponent(slug)}`
     : `${CF_BASE}/mods/search?gameId=432&classId=4471&searchFilter=${encodeURIComponent(
@@ -37,37 +33,55 @@ async function searchMods(query) {
   return data.data.map((m) => ({ id: String(m.id), name: m.name }));
 }
 
-async function checkCurseForge(modpackId) {
+// ดึงรายชื่อทุกเวอร์ชันของ modpack มาให้ผู้ใช้เลือก
+async function listFiles(modpackId) {
   const apiKey = process.env.CURSEFORGE_API_KEY;
 
   if (!apiKey) {
-    return mockCheck(modpackId);
+    return [
+      { id: modpackId + "01", displayName: "เวอร์ชันล่าสุด (ปลอม)", gameVersion: "1.20.1", hasServerPack: false },
+      { id: modpackId + "02", displayName: "เวอร์ชันก่อนหน้า (ปลอม)", gameVersion: "1.19.2", hasServerPack: true },
+    ];
   }
 
-  return realCheck(modpackId, apiKey);
+  const headers = { "x-api-key": apiKey, Accept: "application/json" };
+  const res = await fetch(`${CF_BASE}/mods/${modpackId}/files?pageSize=20`, { headers });
+  if (!res.ok) throw new Error(`curseforge file list failed: ${res.status}`);
+  const data = await res.json();
+  return data.data.map((f) => ({
+    id: String(f.id),
+    displayName: f.displayName,
+    gameVersion: (f.gameVersions && f.gameVersions[0]) || "",
+    hasServerPack: !!f.serverPackFileId,
+  }));
 }
 
-// ข้อมูลปลอม: id ลงท้ายเลขคู่ = มี server pack แล้ว, เลขคี่ = ต้องสร้างเอง
-function mockCheck(modpackId) {
-  const hasServerPack = Number(modpackId) % 2 === 0;
+async function checkCurseForge(modpackId, fileId) {
+  const apiKey = process.env.CURSEFORGE_API_KEY;
+  if (!apiKey) return mockCheck(modpackId, fileId);
+  return realCheck(modpackId, apiKey, fileId);
+}
+
+function mockCheck(modpackId, fileId) {
+  const targetId = String(fileId || modpackId);
+  const hasServerPack = Number(targetId.slice(-1)) % 2 === 0;
   return {
     hasServerPack,
-    downloadUrl: hasServerPack
-      ? `https://example.com/fake-official/${modpackId}.zip`
-      : null,
-    // ใช้ตอนไม่มี server pack สำเร็จรูป -> ส่งให้ worker ไปดาวน์โหลด client pack มาแปลง
-    clientDownloadUrl: `https://example.com/fake-client/${modpackId}.zip`,
+    downloadUrl: hasServerPack ? `https://example.com/fake-official/${targetId}.zip` : null,
+    clientDownloadUrl: `https://example.com/fake-client/${targetId}.zip`,
   };
 }
 
-// ของจริง: เรียก CurseForge API ตามที่คุยกันไว้ตอนออกแบบระบบ
-async function realCheck(modpackId, apiKey) {
+async function realCheck(modpackId, apiKey, overrideFileId) {
   const headers = { "x-api-key": apiKey, Accept: "application/json" };
+  let mainFileId = overrideFileId;
 
-  const modRes = await fetch(`${CF_BASE}/mods/${modpackId}`, { headers });
-  if (!modRes.ok) throw new Error(`curseforge mod lookup failed: ${modRes.status}`);
-  const modData = await modRes.json();
-  const mainFileId = modData.data.mainFileId;
+  if (!mainFileId) {
+    const modRes = await fetch(`${CF_BASE}/mods/${modpackId}`, { headers });
+    if (!modRes.ok) throw new Error(`curseforge mod lookup failed: ${modRes.status}`);
+    const modData = await modRes.json();
+    mainFileId = modData.data.mainFileId;
+  }
 
   const fileRes = await fetch(`${CF_BASE}/mods/${modpackId}/files/${mainFileId}`, { headers });
   if (!fileRes.ok) throw new Error(`curseforge file lookup failed: ${fileRes.status}`);
@@ -75,32 +89,34 @@ async function realCheck(modpackId, apiKey) {
   const serverPackFileId = fileData.data.serverPackFileId;
 
   if (!serverPackFileId) {
-    // ไม่มี server pack สำเร็จรูป -> ขอลิงก์โหลด client pack ผ่าน endpoint เดียวกับตอนมี server pack
-    // (เชื่อถือได้กว่าอ่าน fileData.data.downloadUrl ตรงๆ ซึ่งบางครั้งเป็น null)
     const clientDownloadRes = await fetch(
       `${CF_BASE}/mods/${modpackId}/files/${mainFileId}/download-url`,
       { headers }
     );
+    if (clientDownloadRes.status === 403) {
+      const err = new Error("DISTRIBUTION_DISABLED");
+      err.code = "DISTRIBUTION_DISABLED";
+      throw err;
+    }
     if (!clientDownloadRes.ok) {
       throw new Error(`curseforge client download url failed: ${clientDownloadRes.status}`);
     }
     const clientDownloadData = await clientDownloadRes.json();
-
-    return {
-      hasServerPack: false,
-      downloadUrl: null,
-      clientDownloadUrl: clientDownloadData.data,
-    };
+    return { hasServerPack: false, downloadUrl: null, clientDownloadUrl: clientDownloadData.data };
   }
 
   const downloadRes = await fetch(
     `${CF_BASE}/mods/${modpackId}/files/${serverPackFileId}/download-url`,
     { headers }
   );
+  if (downloadRes.status === 403) {
+    const err = new Error("DISTRIBUTION_DISABLED");
+    err.code = "DISTRIBUTION_DISABLED";
+    throw err;
+  }
   if (!downloadRes.ok) throw new Error(`curseforge download url failed: ${downloadRes.status}`);
   const downloadData = await downloadRes.json();
-
   return { hasServerPack: true, downloadUrl: downloadData.data, clientDownloadUrl: null };
 }
 
-module.exports = { checkCurseForge, searchMods };
+module.exports = { checkCurseForge, searchMods, listFiles };

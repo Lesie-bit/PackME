@@ -1,14 +1,13 @@
 require("dotenv/config");
 const crypto = require("crypto");
 const express = require("express");
-const { checkCurseForge, searchMods } = require("./curseforge");
+const { checkCurseForge, searchMods, listFiles } = require("./curseforge");
 const { createJob, updateJob, getJob } = require("./db");
 const { startGeneration } = require("./pipeline");
 
 const app = express();
 app.use(express.static("public"));
 
-// endpoint ค้นหา modpack เอาไว้เติม dropdown แบบพิมพ์ชื่อ
 app.get("/api/modpacks/search", async (req, res) => {
   const query = req.query.q || "";
   if (query.length < 2) return res.json([]);
@@ -22,12 +21,22 @@ app.get("/api/modpacks/search", async (req, res) => {
   }
 });
 
-// endpoint หลัก: เช็คว่า modpack นี้มี server pack สำเร็จรูปหรือไม่
+app.get("/api/modpacks/:id/files", async (req, res) => {
+  try {
+    const files = await listFiles(req.params.id);
+    res.json(files);
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: "โหลดรายการเวอร์ชันไม่สำเร็จ" });
+  }
+});
+
 app.get("/api/modpacks/:id/server-pack", async (req, res) => {
   const modpackId = req.params.id;
+  const fileId = req.query.fileId || null;
 
   try {
-    const info = await checkCurseForge(modpackId);
+    const info = await checkCurseForge(modpackId, fileId);
 
     if (info.hasServerPack) {
       return res.json({ type: "official", downloadUrl: info.downloadUrl });
@@ -44,18 +53,21 @@ app.get("/api/modpacks/:id/server-pack", async (req, res) => {
     return res.json({ type: "generating", jobId });
   } catch (err) {
     console.error(err);
+    if (err.code === "DISTRIBUTION_DISABLED") {
+      return res.status(403).json({
+        error: "modpack นี้ไม่อนุญาตให้เข้าถึงผ่าน third-party API (เจ้าของปิดสิทธิ์นี้ไว้)",
+      });
+    }
     return res.status(502).json({ error: "ตรวจสอบข้อมูล modpack ไม่สำเร็จ" });
   }
 });
 
-// endpoint ให้ frontend เรียกวนซ้ำ (polling) เพื่อเช็คว่า job เสร็จหรือยัง
 app.get("/api/jobs/:jobId", async (req, res) => {
   const job = await getJob(req.params.jobId);
   if (!job) return res.status(404).json({ error: "ไม่พบ job นี้" });
   res.json({ status: job.status, resultUrl: job.result_url });
 });
 
-// endpoint ให้ GitHub Actions worker เรียกกลับมาตอนสร้าง server pack เสร็จแล้ว
 app.post("/api/jobs/:jobId/complete", express.json(), async (req, res) => {
   const auth = req.headers.authorization;
   if (auth !== `Bearer ${process.env.PACKME_WORKER_SECRET}`) {

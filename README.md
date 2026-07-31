@@ -1,60 +1,135 @@
 # PackME
 
+🇹🇭 [ภาษาไทย](#ภาษาไทย) | 🇬🇧 [English](#english)
+
+---
+
+## ภาษาไทย
+
 หา หรือสร้าง server pack ให้ modpack จาก CurseForge โดยอัตโนมัติ
 
-- ถ้า modpack มี server pack สำเร็จรูปอยู่แล้ว → ส่งลิงก์ดาวน์โหลดกลับทันที
-- ถ้าไม่มี → ระบบสร้างงานคิว แล้วแจ้งสถานะจนกว่าจะเสร็จ
+🔗 **Live demo:** [ใส่ URL Render ของคุณ]
 
-## สถานะปัจจุบัน
+### ฟีเจอร์
 
-ระบบทำงานครบทุกส่วนแล้ว **ยกเว้นจุดเดียว**: ยังไม่มี CurseForge API key จริง
-ตอนนี้ใช้ข้อมูลปลอม (mock) แทนอยู่ในไฟล์ `curseforge.js` — ดู mock data ได้จาก
-logic ง่ายๆ: modpack ID ลงท้ายเลขคู่ = มี server pack แล้ว, เลขคี่ = ต้องสร้างเอง (จำลอง 5 วิ)
+- ค้นหา modpack แบบพิมพ์ชื่อ หรือวางลิงก์ CurseForge ได้เลย
+- เลือกได้ทุกเวอร์ชันของ modpack ไม่ใช่แค่เวอร์ชันล่าสุด
+- ถ้า modpack มี server pack สำเร็จรูปอยู่แล้ว → ลิงก์ตรงไปที่ CurseForge ทันที
+- ถ้าไม่มี → สร้างให้อัตโนมัติผ่าน GitHub Actions แล้วแจกผ่าน GitHub Releases
+- รองรับ 2 ภาษา (ไทย/อังกฤษ)
 
-พอได้ API key จริง แค่ใส่ค่าใน `.env` → ระบบจะสลับไปเรียกของจริงเองอัตโนมัติ
-โดยไม่ต้องแก้โค้ดที่อื่นเลย (ดูฟังก์ชัน `realCheck` ใน `curseforge.js`)
+### วิธีทำงาน
+ผู้ใช้ค้นหา modpack → เช็คผ่าน CurseForge API
+├─ มี server pack แล้ว → ลิงก์ตรงไปที่ CurseForge
+└─ ไม่มี → GitHub Actions รัน mcpacker แปลง client pack
+เป็น server pack → อัปโหลดเป็น GitHub Release
+→ แจ้งกลับมาอัปเดตสถานะ
+### Tech stack
 
-## ฟีเจอร์
+- **Backend:** Node.js + Express
+- **Database:** Supabase (Postgres)
+- **Server pack generation:** [mcpacker](https://github.com/littlepenguin66/mcpacker) รันบน GitHub Actions
+- **File hosting:** GitHub Releases
+- **Deploy:** Render
 
-- ค้นหา modpack แบบพิมพ์ชื่อ (autocomplete dropdown)
-- สลับภาษาไทย/อังกฤษได้ (จำค่าไว้ใน localStorage)
-- เช็ค + สร้าง server pack ตามเดิม
-- เก็บสถานะ job ลงไฟล์ (`packme.db.json`) ไม่หายตอน restart server แล้ว
+### รันในเครื่อง
 
-## โครงสร้างไฟล์
-
-```
-PackME/
-├── server.js         เซิร์ฟเวอร์หลัก (Express) รวม endpoint ค้นหา + เช็ค + job status
-├── curseforge.js      จุดสลับ mock <-> ของจริง (CurseForge API) มี searchMods + checkCurseForge
-├── mockMods.js         รายชื่อ modpack ปลอมไว้ค้นหาก่อนมี API key จริง
-├── db.js               เก็บ/อ่านสถานะ job เป็นไฟล์ JSON (ไม่ต้องติดตั้ง database engine)
-├── public/
-│   ├── index.html     หน้าเว็บ
-│   ├── style.css       ดีไซน์
-│   ├── i18n.js          คำแปลไทย/อังกฤษ + ฟังก์ชันสลับภาษา
-│   └── script.js        เรียก API + ค้นหา + polling สถานะ job
-├── .env.example        template ตัวแปรลับ
-└── .gitignore           กัน node_modules, .env, packme.db.json หลุดขึ้น GitHub
-```
-
-## วิธีรัน
-
-```
+```bash
 npm install
+cp .env.example .env   # แล้วใส่ค่าจริงตามด้านล่าง
 npm start
 ```
 
-เปิด http://localhost:4000 แล้วลองใส่ modpack ID (เลขคู่/คี่ ดูผลต่างกัน)
+เปิด http://localhost:4000
 
-## ขั้นต่อไป (เมื่อได้ CurseForge API key)
+### ตัวแปรที่ต้องตั้งค่า (`.env`)
 
-1. สมัคร key ที่ https://console.curseforge.com
-2. คัดลอก `.env.example` เป็น `.env` แล้วใส่ค่า `CURSEFORGE_API_KEY`
-3. รันใหม่ — ระบบจะเรียกข้อมูลจริงแทน mock ทันที
+| ตัวแปร | ใช้ทำอะไร |
+|---|---|
+| `CURSEFORGE_API_KEY` | เรียก CurseForge API (สมัครที่ console.curseforge.com) |
+| `SUPABASE_URL` / `SUPABASE_KEY` | เก็บสถานะ job |
+| `GITHUB_TOKEN` | สั่งงาน GitHub Actions worker |
+| `GITHUB_REPO` | เช่น `username/PackME` |
+| `PACKME_WORKER_SECRET` | รหัสลับยืนยันระหว่าง backend กับ worker |
 
-## ข้อจำกัดที่รู้อยู่แล้ว (ต่อยอดได้ในอนาคต)
+ถ้าไม่ตั้งค่า `CURSEFORGE_API_KEY`/`GITHUB_TOKEN` ระบบจะใช้ข้อมูลปลอม (mock) แทนอัตโนมัติ เหมาะกับตอน dev
 
-- `packme.db.json` เป็นไฟล์เดียว เหมาะกับผู้ใช้ไม่เยอะ ถ้า deploy จริงจังมีคนใช้เยอะ ค่อยย้ายไป Postgres/MySQL
-- ยังไม่ได้ต่อ ServerPackCreator จริงสำหรับสร้าง server pack เมื่อไม่มีไฟล์สำเร็จรูป (ตอนนี้ปลอม resultUrl ไว้)
-- การค้นหาตอนนี้ใช้รายชื่อปลอมใน `mockMods.js` 8 รายการ พอมี API key จะสลับเป็นค้นหาจริงทั้งวงการ CurseForge ทันที
+### ข้อจำกัดที่รู้อยู่แล้ว
+
+- Modpack ขนาดใหญ่มาก (เช่น Stoneblock 4) อาจสร้างไม่สำเร็จหรือรันไม่ได้ เพราะข้อจำกัดทรัพยากรของ GitHub Actions runner
+- ถ้ามี mod ตัวใดตัวหนึ่งในรายการดาวน์โหลดไม่สำเร็จ (ไฟล์ถูกลบ/เจ้าของปิดสิทธิ์ third-party) จะทำให้สร้าง server pack ทั้งชุดไม่สำเร็จ
+- Server pack ที่สร้างเองเก็บไว้ที่ GitHub Releases ชั่วคราว (ลบอัตโนมัติหลัง 30 วัน)
+
+### สนับสนุนโปรเจกต์
+
+ถ้า PackME มีประโยชน์ สนับสนุนค่า hosting ได้ที่ [Ko-fi](https://ko-fi.com/ใส่ชื่อคุณ) — ไม่มีการซื้อ/ขายฟีเจอร์ใดๆ เป็นการสนับสนุนแบบสมัครใจล้วนๆ
+
+### License
+
+โค้ดในโปรเจกต์นี้ใช้ AGPL 3.0 (ดู `LICENSE`) — ดู `NOTICE.md` สำหรับเครดิตของ dependency ภายนอก
+
+---
+
+## English
+
+Find or automatically generate a server pack for any CurseForge modpack.
+
+🔗 **Live demo:** [add your Render URL]
+
+### Features
+
+- Search modpacks by name, or paste a CurseForge link directly
+- Choose from any version of a modpack, not just the latest
+- If the modpack already has an official server pack, link straight to it on CurseForge
+- If not, one is generated automatically via GitHub Actions and distributed through GitHub Releases
+- Bilingual interface (Thai/English)
+
+### How it works
+User searches for a modpack → checked via the CurseForge API
+├─ Official server pack exists → link straight to CurseForge
+└─ None exists → GitHub Actions runs mcpacker to convert the
+client pack into a server pack → uploads it
+as a GitHub Release → notifies the backend
+### Tech stack
+
+- **Backend:** Node.js + Express
+- **Database:** Supabase (Postgres)
+- **Server pack generation:** [mcpacker](https://github.com/littlepenguin66/mcpacker), run on GitHub Actions
+- **File hosting:** GitHub Releases
+- **Deploy:** Render
+
+### Running locally
+
+```bash
+npm install
+cp .env.example .env   # fill in real values, see below
+npm start
+```
+
+Open http://localhost:4000
+
+### Environment variables (`.env`)
+
+| Variable | Purpose |
+|---|---|
+| `CURSEFORGE_API_KEY` | Calls the CurseForge API (get one at console.curseforge.com) |
+| `SUPABASE_URL` / `SUPABASE_KEY` | Stores job status |
+| `GITHUB_TOKEN` | Triggers the GitHub Actions worker |
+| `GITHUB_REPO` | e.g. `username/PackME` |
+| `PACKME_WORKER_SECRET` | Shared secret between backend and worker |
+
+If `CURSEFORGE_API_KEY`/`GITHUB_TOKEN` are not set, the app automatically falls back to mock data — useful for local development.
+
+### Known limitations
+
+- Very large modpacks (e.g. Stoneblock 4) may fail to generate or fail to run, due to GitHub Actions runner resource limits
+- If any single mod fails to download (file removed, or the owner disabled third-party access), the entire server pack generation fails
+- Self-generated server packs are hosted temporarily on GitHub Releases (auto-deleted after 30 days)
+
+### Support this project
+
+If PackME has been useful to you, you can support hosting costs on [Ko-fi](https://ko-fi.com/your-name) — this is a purely voluntary contribution, no features are sold or gated.
+
+### License
+
+Code in this repository is AGPL 3.0 licensed (see `LICENSE`) — see `NOTICE.md` for third-party dependency credits.
